@@ -1,0 +1,31 @@
+{
+  "name": "design-system-impact",
+  "version": "0.1.0",
+  "description": "Deterministic semantic impact analysis and migration planning for design systems",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "bin": { "design-system-impact": "./dist/cli.js", "dsi": "./dist/cli.js" },
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test --max-warnings=0",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+  },
+  "keywords": ["design-system", "migration", "react", "typescript", "design-tokens", "codemod", "cli"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/hanifbahari/design-system-impact.git" },
+  "bugs": { "url": "https://github.com/hanifbahari/design-system-impact/issues" },
+  "homepage": "https://github.com/hanifbahari/design-system-impact#readme",
+  "dependencies": { "typescript": "^5.9.2" },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "@types/node": "^22.18.1",
+    "eslint": "^9.35.0",
+    "typescript-eslint": "^8.42.0",
+    "vitest": "^3.2.4"
+  }
+}
