@@ -20,11 +20,9 @@ export async function createSnapshot(options: SnapshotOptions): Promise<DesignSy
     const resolved = exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
     const declaration = resolved.valueDeclaration ?? resolved.declarations?.[0];
     if (!declaration) continue;
-    const type = checker.getTypeOfSymbolAtLocation(resolved, declaration);
-    const signature = type.getCallSignatures()[0];
-    const propsParameter = signature?.parameters[0];
-    if (propsParameter) {
-      const propsType = checker.getTypeOfSymbolAtLocation(propsParameter, declaration);
+    const propsInfo = componentProps(checker, resolved, declaration);
+    if (propsInfo) {
+      const { propsType } = propsInfo;
       const props: Record<string, PropContract> = {};
       for (const prop of checker.getPropertiesOfType(propsType).sort((a, b) => a.name.localeCompare(b.name))) {
         const propDecl = prop.valueDeclaration ?? prop.declarations?.[0];
@@ -41,6 +39,25 @@ export async function createSnapshot(options: SnapshotOptions): Promise<DesignSy
   }
   const tokens = await extractTokens(root, options.tokenPatterns ?? [], diagnostics);
   return { schemaVersion: 1, kind: 'design-system-snapshot', package: { name: options.packageName, ...(options.packageVersion ? { version: options.packageVersion } : {}) }, generatedBy: { name: 'design-system-impact', schemaVersion: 1 }, components, tokens, exports, diagnostics };
+}
+function componentProps(checker: ts.TypeChecker, symbol: ts.Symbol, declaration: ts.Declaration): { propsType: ts.Type } | undefined {
+  if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
+    const wrapped = propsFromExpression(checker, declaration.initializer);
+    if (wrapped) return wrapped;
+  }
+  return propsFromType(checker, checker.getTypeOfSymbolAtLocation(symbol, declaration), declaration);
+}
+function propsFromExpression(checker: ts.TypeChecker, expression: ts.Expression): { propsType: ts.Type } | undefined {
+  if (ts.isCallExpression(expression)) {
+    const wrapper = expression.expression.getText().split('.').at(-1);
+    const inner = expression.arguments[0];
+    if (inner && (wrapper === 'memo' || wrapper === 'forwardRef')) return propsFromExpression(checker, inner);
+  }
+  return propsFromType(checker, checker.getTypeAtLocation(expression), expression);
+}
+function propsFromType(checker: ts.TypeChecker, type: ts.Type, location: ts.Node): { propsType: ts.Type } | undefined {
+  const parameter = type.getCallSignatures()[0]?.parameters[0];
+  return parameter ? { propsType: checker.getTypeOfSymbolAtLocation(parameter, location) } : undefined;
 }
 function literalValues(type: ts.Type): string[] {
   const parts = type.isUnion() ? type.types : [type];
