@@ -1,6 +1,6 @@
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-export function posixPath(value: string): string { return value.split(path.sep).join('/'); }
+export function posixPath(value: string): string { return value.replaceAll('\\', '/').split(path.sep).join('/'); }
 export function relativePath(root: string, value: string): string { return posixPath(path.relative(root, value)); }
 export function stableStringify(value: unknown, space = 2): string { return JSON.stringify(sortValue(value), null, space) + '\n'; }
 function sortValue(value: unknown): unknown {

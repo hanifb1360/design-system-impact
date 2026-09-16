@@ -6,4 +6,5 @@ export { createCodeownersResolver } from './ownership.js';
 export { createMigrationPlan } from './migration.js';
 export { renderArtifact } from './reporters.js';
 export { stableStringify } from './utils.js';
+export { validateArtifact, validateConfig, ValidationError } from './validation.js';
 export type * from './model.js';
