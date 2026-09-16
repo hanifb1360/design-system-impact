@@ -1,1 +1,1 @@
-{ "name": "@acme/ui", "version": "2.0.0", "private": true }
+{ "name": "@acme/ui", "version": "2.0.0", "private": true, "exports": { ".": "./src/index.ts", "./button": "./src/button.ts" } }

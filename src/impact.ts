@@ -14,7 +14,7 @@ export async function analyzeImpact(options: AnalyzeImpactOptions): Promise<Impa
 }
 function analyzeSource(file: string, text: string, rel: string, workspace: string | undefined, owner: string[] | undefined, options: AnalyzeImpactOptions, out: Impact[]): void {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS); const imports = new Map<string, string>();
-  source.forEachChild((node) => { if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === options.packageName && node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)) for (const element of node.importClause.namedBindings.elements) imports.set(element.name.text, element.propertyName?.text ?? element.name.text); });
+  source.forEachChild((node) => { if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && (node.moduleSpecifier.text === options.packageName || node.moduleSpecifier.text.startsWith(`${options.packageName}/`)) && node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)) for (const element of node.importClause.namedBindings.elements) imports.set(element.name.text, element.propertyName?.text ?? element.name.text); });
   function visit(node: ts.Node): void {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) { const local = node.tagName.getText(source); const component = imports.get(local); if (component) for (const change of options.diff.changes) {
       if (change.subject.component !== component) continue; let target: ts.Node | undefined; let observedValue: string | undefined;

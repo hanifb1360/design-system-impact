@@ -26,7 +26,16 @@ export function diffSnapshots(before: DesignSystemSnapshot, after: DesignSystemS
     }
   }
   const exportNames = new Set([...before.exports.map((v) => v.name), ...after.exports.map((v) => v.name)]);
-  for (const name of [...exportNames].sort()) { const a = before.exports.find((v) => v.name === name); const b = after.exports.find((v) => v.name === name); if (a && b && a.importPath !== b.importPath) changes.push(change({ id: `export.${idPart(name)}.path`, category: 'export', changeType: 'path-changed', severity: 'breaking', subject: { export: name }, before: a.importPath, after: b.importPath })); }
+  for (const name of [...exportNames].sort()) {
+    const oldPaths = new Set(before.exports.filter((item) => item.name === name).map((item) => item.importPath));
+    const newPaths = new Set(after.exports.filter((item) => item.name === name).map((item) => item.importPath));
+    const removed = [...oldPaths].filter((item) => !newPaths.has(item)).sort(); const added = [...newPaths].filter((item) => !oldPaths.has(item)).sort();
+    if (oldPaths.size === 1 && newPaths.size === 1 && removed.length === 1 && added.length === 1) changes.push(change({ id: `export.${idPart(name)}.path`, category: 'export', changeType: 'path-changed', severity: 'breaking', subject: { export: name }, before: removed[0], after: added[0] }));
+    else {
+      for (const importPath of removed) changes.push(change({ id: `export.${idPart(name)}.${idPart(importPath)}.removed`, category: 'export', changeType: 'removed', severity: 'breaking', subject: { export: name }, before: importPath }));
+      for (const importPath of added) changes.push(change({ id: `export.${idPart(name)}.${idPart(importPath)}.added`, category: 'export', changeType: 'added', severity: 'non-breaking', subject: { export: name }, after: importPath }));
+    }
+  }
   const tokenNames = new Set([...Object.keys(before.tokens), ...Object.keys(after.tokens)]);
   for (const name of [...tokenNames].sort()) { const a = before.tokens[name]; const b = after.tokens[name]; const base = `token.${idPart(name)}`;
     if (!a) changes.push(change({ id: `${base}.added`, category: 'token', changeType: 'added', severity: 'non-breaking', subject: { token: name }, after: b }));

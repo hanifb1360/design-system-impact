@@ -8,14 +8,29 @@ import { relativePath } from './utils.js';
 export interface SnapshotOptions { root: string; packageName: string; packageVersion?: string; entry: string; tokenPatterns?: string[] }
 export async function createSnapshot(options: SnapshotOptions): Promise<DesignSystemSnapshot> {
   const root = path.resolve(options.root); const entry = path.resolve(root, options.entry);
+  const publicEntries = await packageExportEntries(root, options.packageName);
   const files = await walk(root, new Set(['.ts', '.tsx']));
-  const program = ts.createProgram(files, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext, jsx: ts.JsxEmit.ReactJSX, skipLibCheck: true });
+  for (const publicEntry of publicEntries) if (analyzableCodeFile(publicEntry.file) && !files.includes(publicEntry.file)) files.push(publicEntry.file);
+  const program = ts.createProgram(files, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext, jsx: ts.JsxEmit.ReactJSX, allowJs: true, skipLibCheck: true });
   const checker = program.getTypeChecker(); const diagnostics: Diagnostic[] = [];
   const entrySource = program.getSourceFile(entry);
   if (!entrySource) throw new Error(`DSI1101: Design system entry was not found: ${options.entry}`);
   const moduleSymbol = checker.getSymbolAtLocation(entrySource);
   if (!moduleSymbol) throw new Error(`DSI1102: Could not inspect exports from: ${options.entry}`);
   const components: Record<string, ComponentContract> = {}; const exports = [] as DesignSystemSnapshot['exports'];
+  inspectModule(checker, moduleSymbol, options.packageName, root, components, exports, diagnostics);
+  for (const publicEntry of publicEntries) {
+    if (publicEntry.importPath === options.packageName || !analyzableCodeFile(publicEntry.file)) continue;
+    const source = program.getSourceFile(publicEntry.file); const symbol = source && checker.getSymbolAtLocation(source);
+    if (!source || !symbol) { diagnostics.push({ code: 'DSI1104', severity: 'warning', message: `Could not inspect package export ${publicEntry.importPath} at ${relativePath(root, publicEntry.file)}.` }); continue; }
+    inspectModule(checker, symbol, publicEntry.importPath, root, components, exports, diagnostics);
+  }
+  exports.sort((a, b) => a.name.localeCompare(b.name) || a.importPath.localeCompare(b.importPath));
+  const tokens = await extractTokens(root, options.tokenPatterns ?? [], diagnostics);
+  return { schemaVersion: 1, kind: 'design-system-snapshot', package: { name: options.packageName, ...(options.packageVersion ? { version: options.packageVersion } : {}) }, generatedBy: { name: 'design-system-impact', schemaVersion: 1 }, components, tokens, exports, diagnostics };
+}
+function analyzableCodeFile(file: string): boolean { return /(?:\.d)?\.[cm]?[jt]sx?$/.test(file); }
+function inspectModule(checker: ts.TypeChecker, moduleSymbol: ts.Symbol, importPath: string, root: string, components: Record<string, ComponentContract>, exports: DesignSystemSnapshot['exports'], diagnostics: Diagnostic[]): void {
   for (const exported of checker.getExportsOfModule(moduleSymbol).sort((a, b) => a.name.localeCompare(b.name))) {
     const resolved = exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
     const declaration = resolved.valueDeclaration ?? resolved.declarations?.[0];
@@ -33,12 +48,30 @@ export async function createSnapshot(options: SnapshotOptions): Promise<DesignSy
         props[prop.name] = { required: !(prop.flags & ts.SymbolFlags.Optional), type: checker.typeToString(propType, propDecl, ts.TypeFormatFlags.NoTruncation), ...(literals.length ? { literals } : {}), ...(deprecated ? { deprecated } : {}) };
       }
       const deprecated = jsDocDeprecated(resolved);
-      components[exported.name] = { name: exported.name, importPath: options.packageName, props, ...(deprecated ? { deprecated } : {}), source: location(root, declaration) };
-      exports.push({ name: exported.name, importPath: options.packageName, kind: 'component' });
-    } else exports.push({ name: exported.name, importPath: options.packageName, kind: 'symbol' });
+      components[exported.name] ??= { name: exported.name, importPath, props, ...(deprecated ? { deprecated } : {}), source: location(root, declaration) };
+      addExport(exports, { name: exported.name, importPath, kind: 'component' });
+    } else addExport(exports, { name: exported.name, importPath, kind: 'symbol' });
   }
-  const tokens = await extractTokens(root, options.tokenPatterns ?? [], diagnostics);
-  return { schemaVersion: 1, kind: 'design-system-snapshot', package: { name: options.packageName, ...(options.packageVersion ? { version: options.packageVersion } : {}) }, generatedBy: { name: 'design-system-impact', schemaVersion: 1 }, components, tokens, exports, diagnostics };
+}
+function addExport(exports: DesignSystemSnapshot['exports'], value: DesignSystemSnapshot['exports'][number]): void { if (!exports.some((item) => item.name === value.name && item.importPath === value.importPath)) exports.push(value); }
+async function packageExportEntries(root: string, packageName: string): Promise<Array<{ importPath: string; file: string }>> {
+  let manifest: { exports?: unknown };
+  try { manifest = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')) as { exports?: unknown }; } catch { return []; }
+  if (!manifest.exports || typeof manifest.exports !== 'object' || Array.isArray(manifest.exports)) return [];
+  const entries: Array<{ importPath: string; file: string }> = [];
+  for (const [subpath, target] of Object.entries(manifest.exports as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))) {
+    if (subpath !== '.' && !subpath.startsWith('./')) continue;
+    const file = exportTarget(target); if (!file || file.includes('*')) continue;
+    entries.push({ importPath: subpath === '.' ? packageName : `${packageName}/${subpath.slice(2)}`, file: path.resolve(root, file) });
+  }
+  return entries;
+}
+function exportTarget(value: unknown): string | undefined {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const conditions = value as Record<string, unknown>;
+  for (const key of ['types', 'import', 'default', 'require']) { const resolved = exportTarget(conditions[key]); if (resolved) return resolved; }
+  return undefined;
 }
 function componentProps(checker: ts.TypeChecker, symbol: ts.Symbol, declaration: ts.Declaration): { propsType: ts.Type } | undefined {
   if (ts.isVariableDeclaration(declaration) && declaration.initializer) {

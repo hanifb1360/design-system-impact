@@ -63,6 +63,7 @@ The CLI is a thin wrapper over these functions. Public artifacts use `schemaVers
 ## Supported patterns
 
 - Named public exports from a TypeScript entry point
+- Explicit TypeScript package subpaths declared in `package.json` exports, including generated `.d.ts` targets
 - Function/arrow components whose first parameter resolves to a props type
 - Required and optional props, primitive display types, literal unions, and `@deprecated`
 - DTCG-style `$value`, legacy `value`, nested JSON tokens, and `{alias.path}` aliases
@@ -75,6 +76,7 @@ The CLI is a thin wrapper over these functions. Public artifacts use `schemaVers
 - Generic, polymorphic, class, conditional, deeply composed wrappers, and externally declared props may be incomplete; unsupported declarations are not fabricated.
 - Consumer analysis follows direct named imports and literal JSX attributes. Re-exports, aliases through local variables, spreads, computed values, and runtime token construction need future data-flow analysis.
 - JSON configuration is intentionally static and safe. `defineConfig` is typed for programmatic use, but the CLI does not execute TypeScript configuration.
+- Wildcard and runtime-only package exports are not expanded. Conditional exports prefer `types`, then `import`, `default`, and `require` targets.
 - CODEOWNERS support covers common last-match-wins glob rules, not every escaping nuance of GitHub's grammar.
 - Token location lines in JSON are file-level in v0.1. CSS locations are exact.
 - Rename inference is deliberately absent. Explicit migration hints are authoritative guidance; observations remain separate.
