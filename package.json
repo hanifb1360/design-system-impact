@@ -13,13 +13,16 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test --max-warnings=0",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+    "test:package": "node test/package-smoke.mjs",
+    "check": "npm run typecheck && npm run lint && npm run build && npm test && npm run test:package",
+    "prepublishOnly": "npm run check"
   },
   "keywords": ["design-system", "migration", "react", "typescript", "design-tokens", "codemod", "cli"],
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/hanifbahari/design-system-impact.git" },
-  "bugs": { "url": "https://github.com/hanifbahari/design-system-impact/issues" },
-  "homepage": "https://github.com/hanifbahari/design-system-impact#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/hanifb1360/design-system-impact.git" },
+  "bugs": { "url": "https://github.com/hanifb1360/design-system-impact/issues" },
+  "homepage": "https://github.com/hanifb1360/design-system-impact#readme",
+  "publishConfig": { "access": "public", "provenance": true },
   "dependencies": { "typescript": "^5.9.2" },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
