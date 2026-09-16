@@ -112,18 +112,27 @@ async function extractTokens(root: string, patterns: string[], diagnostics: Diag
       const regex = /(--[\w-]+)\s*:\s*([^;{}]+);/g; let match: RegExpExecArray | null;
       while ((match = regex.exec(text))) { const before = text.slice(0, match.index); const line = before.split('\n').length; const value = match[2]!.trim(); tokens[match[1]!] = { name: match[1]!, kind: 'css-custom-property', value, ...(value.match(/^var\((--[\w-]+)\)$/)?.[1] ? { alias: value.match(/^var\((--[\w-]+)\)$/)![1] } : {}), source: { file: rel, line, column: 1 } }; }
     } else {
-      try { flattenJson(JSON.parse(text) as unknown, '', rel, tokens); }
+      try { JSON.parse(text); extractJsonTokens(text, rel, tokens); }
       catch { diagnostics.push({ code: 'DSI1201', severity: 'error', message: `Could not parse token JSON: ${rel}`, location: { file: rel, line: 1, column: 1 } }); }
     }
   }
   return Object.fromEntries(Object.entries(tokens).sort(([a], [b]) => a.localeCompare(b)));
 }
-function flattenJson(value: unknown, prefix: string, file: string, out: Record<string, TokenContract>): void {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) { if (prefix) out[prefix] = { name: prefix, kind: 'json', value, ...(typeof value === 'string' && /^\{.+\}$/.test(value) ? { alias: value.slice(1, -1) } : {}), source: { file, line: 1, column: 1 } }; return; }
-  const object = value as Record<string, unknown>;
-  if ('$value' in object || 'value' in object) { const tokenValue = object.$value ?? object.value; out[prefix] = { name: prefix, kind: 'json', value: tokenValue, ...(typeof tokenValue === 'string' && /^\{.+\}$/.test(tokenValue) ? { alias: tokenValue.slice(1, -1) } : {}), source: { file, line: 1, column: 1 } }; return; }
-  for (const key of Object.keys(object).sort()) flattenJson(object[key], prefix ? `${prefix}.${key}` : key, file, out);
+function extractJsonTokens(text: string, file: string, out: Record<string, TokenContract>): void {
+  const source = ts.parseJsonText(file, text); const root = source.statements[0]?.expression;
+  if (!root || !ts.isObjectLiteralExpression(root)) return;
+  visitJsonObject(root, '', undefined);
+  function visitJsonObject(node: ts.ObjectLiteralExpression, prefix: string, tokenNameNode: ts.Node | undefined): void {
+    const properties = node.properties.filter(ts.isPropertyAssignment); const valueProperty = properties.find((property) => ['$value', 'value'].includes(jsonPropertyName(property.name)));
+    if (valueProperty && prefix) { const tokenValue = JSON.parse(valueProperty.initializer.getText(source)) as unknown; addJsonToken(prefix, tokenValue, tokenNameNode ?? valueProperty.name); return; }
+    for (const property of properties) { const key = jsonPropertyName(property.name); if (!key || key.startsWith('$')) continue; const name = prefix ? `${prefix}.${key}` : key;
+      if (ts.isObjectLiteralExpression(property.initializer)) visitJsonObject(property.initializer, name, property.name);
+      else { const tokenValue = JSON.parse(property.initializer.getText(source)) as unknown; addJsonToken(name, tokenValue, property.name); }
+    }
+  }
+  function addJsonToken(name: string, value: unknown, node: ts.Node): void { const start = source.getLineAndCharacterOfPosition(node.getStart(source)); out[name] = { name, kind: 'json', value, ...(typeof value === 'string' && /^\{.+\}$/.test(value) ? { alias: value.slice(1, -1) } : {}), source: { file, line: start.line + 1, column: start.character + 1 } }; }
 }
+function jsonPropertyName(name: ts.PropertyName): string { return ts.isStringLiteral(name) || ts.isIdentifier(name) || ts.isNumericLiteral(name) ? name.text : ''; }
 export async function snapshotFromConfig(root: string, config: ImpactConfig): Promise<DesignSystemSnapshot> {
   let version: string | undefined;
   try { const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')) as { version?: string }; version = pkg.version; } catch { /* package version is optional */ }

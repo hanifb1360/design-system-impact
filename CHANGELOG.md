@@ -8,3 +8,4 @@
 - Added package export/subpath discovery, multi-path export diffs, and subpath-aware consumer imports.
 - Added deterministic multi-level local barrel and named-alias tracing for consumer imports.
 - Added `DSI2101` diagnostics for JSX spreads and suppressed false definite impacts when a spread may supply a newly required prop.
+- Added AST-derived JSON token line and column locations and ignored DTCG group metadata such as `$type`.

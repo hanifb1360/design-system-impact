@@ -4,7 +4,7 @@
 
 Design-system upgrades need inspectable evidence that can survive CI, review, and later automation. The package therefore uses five immutable stages: source → snapshot → semantic diff → consumer impacts → migration manifest. Each machine artifact is independently serializable and schema-versioned. CLI handlers only coordinate exported library functions.
 
-The TypeScript compiler API provides syntax, module exports, symbols, type resolution, JSDoc, and JSX parsing without recreating TypeScript's type system. It is the only runtime dependency. Source files and JSON are parsed, never imported or executed. Token support begins with nested JSON/DTCG values and CSS custom properties.
+The TypeScript compiler API provides syntax, module exports, symbols, type resolution, JSDoc, JSX parsing, and a JSON AST without recreating TypeScript's type system. It is the only runtime dependency. Source files and JSON are parsed, never imported or executed. JSON token locations come from property nodes, while DTCG metadata keys remain metadata rather than becoming tokens. Token support begins with nested JSON/DTCG values and CSS custom properties.
 
 ## Semantic model
 

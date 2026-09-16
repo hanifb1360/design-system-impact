@@ -67,6 +67,7 @@ The CLI is a thin wrapper over these functions. Public artifacts use `schemaVers
 - Function/arrow components whose first parameter resolves to a props type
 - Required and optional props, primitive display types, literal unions, and `@deprecated`
 - DTCG-style `$value`, legacy `value`, nested JSON tokens, and `{alias.path}` aliases
+- Exact JSON token key line and column locations, with DTCG group metadata excluded from token output
 - CSS custom-property declarations and `var(--token)` aliases/usages
 - Named component imports and JSX attributes
 - Named imports and aliases traced through local relative barrel re-exports
@@ -81,7 +82,6 @@ The CLI is a thin wrapper over these functions. Public artifacts use `schemaVers
 - JSON configuration is intentionally static and safe. `defineConfig` is typed for programmatic use, but the CLI does not execute TypeScript configuration.
 - Wildcard and runtime-only package exports are not expanded. Conditional exports prefer `types`, then `import`, `default`, and `require` targets.
 - CODEOWNERS support covers common last-match-wins glob rules, not every escaping nuance of GitHub's grammar.
-- Token location lines in JSON are file-level in v0.1. CSS locations are exact.
 - Rename inference is deliberately absent. Explicit migration hints are authoritative guidance; observations remain separate.
 
 ## Design philosophy
