@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:package": "node test/package-smoke.mjs",
     "check": "npm run typecheck && npm run lint && npm run build && npm test && npm run test:package",
+    "release:check": "npm run check && npm audit --omit=dev && npm pack --dry-run",
     "prepare": "npm run build",
     "prepublishOnly": "npm run check"
   },
@@ -34,6 +35,6 @@
     "ajv": "^8.17.1",
     "eslint": "^9.35.0",
     "typescript-eslint": "^8.42.0",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.11"
   }
 }
