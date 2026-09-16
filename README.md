@@ -6,7 +6,7 @@ It complements [`design-system-guard`](https://www.npmjs.com/package/design-syst
 
 ## Status
 
-This is an initial production-oriented vertical slice. It supports exported function components with statically resolvable props, TypeScript literal unions and requiredness, JSON/DTCG-style tokens, CSS custom properties, JSX usage, workspace attribution, basic CODEOWNERS rules, explicit migration hints, and JSON/text/Markdown output. See [Known limitations](#known-limitations).
+This is an initial production-oriented vertical slice. It supports exported function components (including statically resolvable `memo` and `forwardRef` wrappers), TypeScript literal unions and requiredness, JSON/DTCG-style tokens, CSS custom properties, JSX usage, workspace attribution, basic CODEOWNERS rules, explicit migration hints, and JSON/text/Markdown output. See [Known limitations](#known-limitations).
 
 ## Install
 
@@ -58,7 +58,7 @@ For CI, `design-system-impact check changes.json` exits 1 when a breaking change
 import { createSnapshot, diffSnapshots, analyzeImpact, createMigrationPlan } from 'design-system-impact';
 ```
 
-The CLI is a thin wrapper over these functions. Public artifacts use `schemaVersion: 1` and stable serialization. Snapshot source paths are repository-relative and slash-normalized.
+The CLI is a thin wrapper over these functions. Public artifacts use `schemaVersion: 1`, are validated when read, and use stable serialization. Snapshot source paths are repository-relative and slash-normalized. `validateArtifact` and `validateConfig` are available to API consumers handling external input.
 
 ## Supported patterns
 
@@ -72,7 +72,7 @@ The CLI is a thin wrapper over these functions. Public artifacts use `schemaVers
 
 ## Known limitations
 
-- Generic, polymorphic, class, wrapped (`memo`/`forwardRef`), conditional, and externally declared props may be incomplete; unsupported declarations are not fabricated.
+- Generic, polymorphic, class, conditional, deeply composed wrappers, and externally declared props may be incomplete; unsupported declarations are not fabricated.
 - Consumer analysis follows direct named imports and literal JSX attributes. Re-exports, aliases through local variables, spreads, computed values, and runtime token construction need future data-flow analysis.
 - JSON configuration is intentionally static and safe. `defineConfig` is typed for programmatic use, but the CLI does not execute TypeScript configuration.
 - CODEOWNERS support covers common last-match-wins glob rules, not every escaping nuance of GitHub's grammar.
@@ -95,6 +95,8 @@ npm run check
 node dist/cli.js --help
 npm pack --dry-run
 ```
+
+The repository also smoke-tests the packed tarball by installing it into a temporary project and exercising both its programmatic API and compiled CLI. Publishing is never automatic: maintainers must create a matching `vX.Y.Z` tag and manually run the protected **Publish to npm** workflow. Configure the `npm` GitHub environment with required reviewers and npm trusted publishing before the first release.
 
 See [docs/architecture.md](docs/architecture.md), [docs/research.md](docs/research.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
 
