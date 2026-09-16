@@ -4,7 +4,7 @@
   "description": "Deterministic semantic impact analysis and migration planning for design systems",
   "type": "module",
   "engines": { "node": ">=20" },
-  "bin": { "design-system-impact": "./dist/cli.js", "dsi": "./dist/cli.js" },
+  "bin": { "design-system-impact": "dist/cli.js", "dsi": "dist/cli.js" },
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
     "./schemas/*": "./schemas/*"
@@ -27,7 +27,7 @@
   "repository": { "type": "git", "url": "git+https://github.com/hanifb1360/design-system-impact.git" },
   "bugs": { "url": "https://github.com/hanifb1360/design-system-impact/issues" },
   "homepage": "https://github.com/hanifb1360/design-system-impact#readme",
-  "publishConfig": { "access": "public", "provenance": true },
+  "publishConfig": { "access": "public" },
   "dependencies": { "typescript": "^5.9.2" },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
