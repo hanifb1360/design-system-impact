@@ -17,14 +17,21 @@ function analyzeSource(file: string, text: string, rel: string, workspace: strin
   source.forEachChild((node) => { if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === options.packageName && node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)) for (const element of node.importClause.namedBindings.elements) imports.set(element.name.text, element.propertyName?.text ?? element.name.text); });
   function visit(node: ts.Node): void {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) { const local = node.tagName.getText(source); const component = imports.get(local); if (component) for (const change of options.diff.changes) {
-      if (change.subject.component !== component) continue; let target: ts.Node | undefined;
+      if (change.subject.component !== component) continue; let target: ts.Node | undefined; let observedValue: string | undefined;
       if (change.category === 'component' && change.changeType === 'removed') target = node.tagName;
-      if (change.category === 'component-prop' && change.subject.property) target = node.attributes.properties.find((p) => ts.isJsxAttribute(p) && p.name.getText(source) === change.subject.property);
-      if (target) { const start = source.getLineAndCharacterOfPosition(target.getStart(source)); const location = { file: rel, line: start.line + 1, column: start.character + 1, ...(workspace ? { workspace } : {}), ...(owner?.length ? { owner } : {}) }; const observedValue = ts.isJsxAttribute(target) && target.initializer && ts.isStringLiteral(target.initializer) ? target.initializer.text : undefined; out.push({ id: impactId(change.id, rel, location.line, location.column), changeId: change.id, usage: change.category === 'component' ? 'jsx-component' : 'jsx-prop', subject: change.subject.property ? `${component}.${change.subject.property}` : component, ...(observedValue ? { observedValue } : {}), location, confidence: 'high', automatic: false }); }
+      if (change.category === 'component-prop' && change.subject.property) {
+        const attribute = node.attributes.properties.find((p) => ts.isJsxAttribute(p) && p.name.getText(source) === change.subject.property);
+        observedValue = attribute && ts.isJsxAttribute(attribute) && attribute.initializer && ts.isStringLiteral(attribute.initializer) ? attribute.initializer.text : undefined;
+        if (change.changeType === 'removed' || change.changeType === 'deprecated' || change.changeType === 'type-changed') target = attribute;
+        else if (change.changeType === 'union-narrowed' && attribute && (!observedValue || !Array.isArray(change.after) || !change.after.includes(observedValue))) target = attribute;
+        else if ((change.changeType === 'requiredness-changed' || change.changeType === 'added') && requiredAfter(change.after) && !attribute) target = node.tagName;
+      }
+      if (target) { const start = source.getLineAndCharacterOfPosition(target.getStart(source)); const location = { file: rel, line: start.line + 1, column: start.character + 1, ...(workspace ? { workspace } : {}), ...(owner?.length ? { owner } : {}) }; out.push({ id: impactId(change.id, rel, location.line, location.column), changeId: change.id, usage: change.category === 'component' ? 'jsx-component' : 'jsx-prop', subject: change.subject.property ? `${component}.${change.subject.property}` : component, ...(observedValue ? { observedValue } : {}), location, confidence: 'high', automatic: false }); }
     } }
     ts.forEachChild(node, visit);
   } visit(source);
 }
+function requiredAfter(after: unknown): boolean { return after === true || Boolean(after && typeof after === 'object' && 'required' in after && (after as { required?: unknown }).required === true); }
 function lineColumn(text: string, index: number): { line: number; column: number } { const before = text.slice(0, index); const lines = before.split('\n'); return { line: lines.length, column: lines.at(-1)!.length + 1 }; }
 function impactId(change: string, file: string, line: number, column: number): string { return `${change}@${file}:${line}:${column}`; }
 function dedupe(values: Impact[]): Impact[] { return [...new Map(values.map((v) => [v.id, v])).values()]; }
