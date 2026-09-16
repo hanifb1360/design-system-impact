@@ -70,12 +70,13 @@ The CLI is a thin wrapper over these functions. Public artifacts use `schemaVers
 - CSS custom-property declarations and `var(--token)` aliases/usages
 - Named component imports and JSX attributes
 - Named imports and aliases traced through local relative barrel re-exports
+- `DSI2101` diagnostics when JSX spreads make changed-prop impact uncertain
 - Nearest `package.json` workspace attribution and common CODEOWNERS patterns
 
 ## Known limitations
 
 - Generic, polymorphic, class, conditional, deeply composed wrappers, and externally declared props may be incomplete; unsupported declarations are not fabricated.
-- Consumer analysis evaluates literal JSX attributes. Prop spreads, computed values, and runtime token construction need future data-flow analysis.
+- Consumer analysis evaluates literal JSX attributes. JSX spreads are surfaced as explicit uncertainty diagnostics rather than definite impacts; resolving their object values requires future data-flow analysis. Computed values and runtime token construction remain conservative limitations.
 - Consumer analysis follows named relative barrel re-exports, but does not yet resolve TypeScript path aliases, package-to-package workspace aliases, namespace imports, CommonJS forwarding, or aliases assigned through local variables.
 - JSON configuration is intentionally static and safe. `defineConfig` is typed for programmatic use, but the CLI does not execute TypeScript configuration.
 - Wildcard and runtime-only package exports are not expanded. Conditional exports prefer `types`, then `import`, `default`, and `require` targets.

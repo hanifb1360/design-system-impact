@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'; import path from 'node:path'; import ts from 'typescript';
-import type { Impact, ImpactReport, SemanticDiff } from './model.js'; import type { OwnershipResolver } from './ownership.js';
+import type { Diagnostic, Impact, ImpactReport, SemanticDiff } from './model.js'; import type { OwnershipResolver } from './ownership.js';
 import { walk } from './files.js'; import { compareId, relativePath } from './utils.js';
 export interface AnalyzeImpactOptions { root: string; consumers: string[]; packageName: string; diff: SemanticDiff; ownership?: OwnershipResolver }
 export async function analyzeImpact(options: AnalyzeImpactOptions): Promise<ImpactReport> {
@@ -8,18 +8,21 @@ export async function analyzeImpact(options: AnalyzeImpactOptions): Promise<Impa
   const orderedFiles = [...files].sort(); const texts = new Map<string, string>(); const sources = new Map<string, ts.SourceFile>();
   for (const file of orderedFiles) { const text = await readFile(file, 'utf8'); texts.set(file, text); if (/\.[jt]sx?$/.test(file)) sources.set(file, ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)); }
   const reexports = buildReexportMap(sources, options.packageName, new Set(options.diff.changes.flatMap((item) => item.subject.component ? [item.subject.component] : [])));
-  const impacts: Impact[] = [];
+  const impacts: Impact[] = []; const diagnostics: Diagnostic[] = [];
   for (const file of orderedFiles) { const text = texts.get(file)!; const rel = relativePath(root, file); const owner = options.ownership?.ownersFor(rel); const workspace = await workspaceFor(root, file);
-    const source = sources.get(file); if (source) analyzeSource(file, source, rel, workspace, owner, options, reexports, impacts);
+    const source = sources.get(file); if (source) analyzeSource(file, source, rel, workspace, owner, options, reexports, impacts, diagnostics);
     for (const change of options.diff.changes.filter((item) => item.category === 'token' && item.subject.token)) { const token = change.subject.token!; let index = text.indexOf(token); while (index >= 0) { const loc = lineColumn(text, index); impacts.push({ id: impactId(change.id, rel, loc.line, loc.column), changeId: change.id, usage: 'token', subject: token, location: { file: rel, ...loc, ...(workspace ? { workspace } : {}), ...(owner?.length ? { owner } : {}) }, confidence: token.startsWith('--') ? 'high' : 'medium', automatic: false }); index = text.indexOf(token, index + token.length); } }
   }
-  return { schemaVersion: 1, kind: 'design-system-impact-report', package: options.packageName, impacts: dedupe(impacts).sort(compareId), diagnostics: [] };
+  return { schemaVersion: 1, kind: 'design-system-impact-report', package: options.packageName, impacts: dedupe(impacts).sort(compareId), diagnostics: dedupeDiagnostics(diagnostics) };
 }
-function analyzeSource(file: string, source: ts.SourceFile, rel: string, workspace: string | undefined, owner: string[] | undefined, options: AnalyzeImpactOptions, reexports: Map<string, Map<string, string>>, out: Impact[]): void {
+function analyzeSource(file: string, source: ts.SourceFile, rel: string, workspace: string | undefined, owner: string[] | undefined, options: AnalyzeImpactOptions, reexports: Map<string, Map<string, string>>, out: Impact[], diagnostics: Diagnostic[]): void {
   const imports = new Map<string, string>();
   source.forEachChild((node) => { if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.importClause?.namedBindings && ts.isNamedImports(node.importClause.namedBindings)) { const specifier = node.moduleSpecifier.text; const direct = isDesignSystemModule(specifier, options.packageName); const localExports = direct ? undefined : reexports.get(resolveLocalModule(file, specifier, reexports.keys())); for (const element of node.importClause.namedBindings.elements) { const imported = element.propertyName?.text ?? element.name.text; const component = direct ? imported : localExports?.get(imported); if (component) imports.set(element.name.text, component); } } });
   function visit(node: ts.Node): void {
-    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) { const local = node.tagName.getText(source); const component = imports.get(local); if (component) for (const change of options.diff.changes) {
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) { const local = node.tagName.getText(source); const component = imports.get(local); if (component) {
+      const spreads = node.attributes.properties.filter(ts.isJsxSpreadAttribute); const uncertainChanges = options.diff.changes.filter((change) => change.subject.component === component && change.category === 'component-prop' && change.severity !== 'non-breaking');
+      if (spreads.length && uncertainChanges.length) for (const spread of spreads) { const start = source.getLineAndCharacterOfPosition(spread.getStart(source)); diagnostics.push({ code: 'DSI2101', severity: 'warning', message: `Could not determine whether JSX spread on <${local}> contains affected props: ${[...new Set(uncertainChanges.map((change) => change.subject.property).filter((value): value is string => Boolean(value)))].sort().join(', ')}.`, location: { file: rel, line: start.line + 1, column: start.character + 1 }, related: uncertainChanges.map((change) => change.id).sort() }); }
+      for (const change of options.diff.changes) {
       if (change.subject.component !== component) continue; let target: ts.Node | undefined; let observedValue: string | undefined;
       if (change.category === 'component' && change.changeType === 'removed') target = node.tagName;
       if (change.category === 'component-prop' && change.subject.property) {
@@ -27,10 +30,10 @@ function analyzeSource(file: string, source: ts.SourceFile, rel: string, workspa
         observedValue = attribute && ts.isJsxAttribute(attribute) && attribute.initializer && ts.isStringLiteral(attribute.initializer) ? attribute.initializer.text : undefined;
         if (change.changeType === 'removed' || change.changeType === 'deprecated' || change.changeType === 'type-changed') target = attribute;
         else if (change.changeType === 'union-narrowed' && attribute && (!observedValue || !Array.isArray(change.after) || !change.after.includes(observedValue))) target = attribute;
-        else if ((change.changeType === 'requiredness-changed' || change.changeType === 'added') && requiredAfter(change.after) && !attribute) target = node.tagName;
+        else if ((change.changeType === 'requiredness-changed' || change.changeType === 'added') && requiredAfter(change.after) && !attribute && spreads.length === 0) target = node.tagName;
       }
       if (target) { const start = source.getLineAndCharacterOfPosition(target.getStart(source)); const location = { file: rel, line: start.line + 1, column: start.character + 1, ...(workspace ? { workspace } : {}), ...(owner?.length ? { owner } : {}) }; out.push({ id: impactId(change.id, rel, location.line, location.column), changeId: change.id, usage: change.category === 'component' ? 'jsx-component' : 'jsx-prop', subject: change.subject.property ? `${component}.${change.subject.property}` : component, ...(observedValue ? { observedValue } : {}), location, confidence: 'high', automatic: false }); }
-    } }
+    } } }
     ts.forEachChild(node, visit);
   } visit(source);
 }
@@ -58,4 +61,5 @@ function requiredAfter(after: unknown): boolean { return after === true || Boole
 function lineColumn(text: string, index: number): { line: number; column: number } { const before = text.slice(0, index); const lines = before.split('\n'); return { line: lines.length, column: lines.at(-1)!.length + 1 }; }
 function impactId(change: string, file: string, line: number, column: number): string { return `${change}@${file}:${line}:${column}`; }
 function dedupe(values: Impact[]): Impact[] { return [...new Map(values.map((v) => [v.id, v])).values()]; }
+function dedupeDiagnostics(values: Diagnostic[]): Diagnostic[] { return [...new Map(values.map((value) => [`${value.code}:${value.location?.file}:${value.location?.line}:${value.location?.column}`, value])).values()].sort((a, b) => `${a.location?.file}:${a.location?.line}:${a.location?.column}:${a.code}`.localeCompare(`${b.location?.file}:${b.location?.line}:${b.location?.column}:${b.code}`)); }
 async function workspaceFor(root: string, file: string): Promise<string | undefined> { let dir = path.dirname(file); while (dir.startsWith(root) && dir !== root) { try { const pkg = JSON.parse(await readFile(path.join(dir, 'package.json'), 'utf8')) as { name?: string }; return pkg.name ?? relativePath(root, dir); } catch { dir = path.dirname(dir); } } return undefined; }

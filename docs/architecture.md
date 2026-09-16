@@ -16,6 +16,8 @@ Migration hints are separate author guidance. A planner may combine an observed 
 
 Public entry exports are resolved through the compiler checker. Explicit `package.json` subpaths are inspected as additional public entry points, including declaration targets inside otherwise ignored build directories. Callable exports with a first parameter are initially treated as component candidates and their prop symbols become contracts. Consumer scanning reaches a fixed point over named local re-exports, preserving aliases across multiple relative barrel layers, then builds per-file import maps and walks JSX AST nodes. Token lookup is textual because CSS custom-property references and JSON token identifiers are not TypeScript syntax; results identify their confidence.
 
+JSX spreads are an explicit analysis boundary. A spread may introduce, remove, or override an affected prop, so the analyzer emits `DSI2101` with related change IDs. It does not create a definite impact for a missing required prop when a spread could supply it. This keeps uncertain evidence out of automatic migration tasks while making the coverage gap visible in JSON, terminal, and Markdown reports.
+
 Traversal is sorted, bounded to configured consumer roots, and excludes dependencies and common generated directories. Serialized paths are repository-relative POSIX paths. Parsing is performed once per stage; a future analysis session/cache can share programs across stages without changing public schemas.
 
 ## Ownership and reporting

@@ -7,3 +7,4 @@
 - Added a manual, environment-protected npm provenance workflow.
 - Added package export/subpath discovery, multi-path export diffs, and subpath-aware consumer imports.
 - Added deterministic multi-level local barrel and named-alias tracing for consumer imports.
+- Added `DSI2101` diagnostics for JSX spreads and suppressed false definite impacts when a spread may supply a newly required prop.
