@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-system-impact.dev/schemas/diff.schema.json",
+  "title": "Design System Impact semantic diff v1",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "from", "to", "changes", "diagnostics"],
+  "properties": {
+    "schemaVersion": { "const": 1 }, "kind": { "const": "design-system-diff" },
+    "from": { "$ref": "./common.schema.json#/$defs/package" }, "to": { "$ref": "./common.schema.json#/$defs/package" },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["id", "category", "changeType", "severity", "subject", "evidence"],
+        "properties": {
+          "id": { "type": "string" }, "category": { "enum": ["component", "component-prop", "export", "token"] },
+          "changeType": { "enum": ["added", "removed", "type-changed", "requiredness-changed", "union-expanded", "union-narrowed", "deprecated", "value-changed", "alias-changed", "path-changed"] },
+          "severity": { "enum": ["non-breaking", "potentially-breaking", "breaking"] },
+          "subject": { "type": "object", "properties": { "component": { "type": "string" }, "property": { "type": "string" }, "token": { "type": "string" }, "export": { "type": "string" } }, "additionalProperties": false, "minProperties": 1 },
+          "before": {}, "after": {}, "evidence": { "const": "observed" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "diagnostics": { "type": "array", "items": { "$ref": "./common.schema.json#/$defs/diagnostic" } }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-system-impact.dev/schemas/impact.schema.json",
+  "title": "Design System Impact consumer impact report v1",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "package", "impacts", "diagnostics"],
+  "properties": {
+    "schemaVersion": { "const": 1 }, "kind": { "const": "design-system-impact-report" }, "package": { "type": "string" },
+    "impacts": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["id", "changeId", "usage", "subject", "location", "confidence", "automatic"],
+        "properties": {
+          "id": { "type": "string" }, "changeId": { "type": "string" }, "usage": { "enum": ["jsx-component", "jsx-prop", "import", "token"] }, "subject": { "type": "string" }, "observedValue": { "type": "string" },
+          "location": { "$ref": "./common.schema.json#/$defs/impactLocation" }, "confidence": { "enum": ["high", "medium"] }, "automatic": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "diagnostics": { "type": "array", "items": { "$ref": "./common.schema.json#/$defs/diagnostic" } }
+  },
+  "additionalProperties": false
+}

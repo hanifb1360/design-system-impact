@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-system-impact.dev/schemas/migration.schema.json",
+  "title": "Design System Impact migration manifest v1",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "migration", "tasks", "diagnostics"],
+  "properties": {
+    "schemaVersion": { "const": 1 }, "kind": { "const": "design-system-migration-manifest" },
+    "migration": { "type": "object", "required": ["package"], "properties": { "package": { "type": "string" }, "from": { "type": "string" }, "to": { "type": "string" } }, "additionalProperties": false },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["id", "changeIds", "title", "locations", "instruction", "automatic", "confidence"],
+        "properties": {
+          "id": { "type": "string" }, "changeIds": { "type": "array", "items": { "type": "string" }, "minItems": 1 }, "title": { "type": "string" },
+          "locations": { "type": "array", "items": { "$ref": "./common.schema.json#/$defs/impactLocation" }, "minItems": 1 }, "instruction": { "type": "string" }, "automatic": { "type": "boolean" }, "confidence": { "enum": ["high", "medium"] },
+          "replacement": { "type": "object", "required": ["from", "to"], "properties": { "from": { "type": "string" }, "to": { "type": "string" } }, "additionalProperties": false }
+        },
+        "additionalProperties": false
+      }
+    },
+    "diagnostics": { "type": "array", "items": { "$ref": "./common.schema.json#/$defs/diagnostic" } }
+  },
+  "additionalProperties": false
+}

@@ -60,6 +60,17 @@ import { createSnapshot, diffSnapshots, analyzeImpact, createMigrationPlan } fro
 
 The CLI is a thin wrapper over these functions. Public artifacts use `schemaVersion: 1`, are validated when read, and use stable serialization. Snapshot source paths are repository-relative and slash-normalized. `validateArtifact` and `validateConfig` are available to API consumers handling external input.
 
+### JSON Schemas
+
+The npm package ships Draft 2020-12 schemas for every persistent artifact:
+
+- `design-system-impact/schemas/snapshot.schema.json`
+- `design-system-impact/schemas/diff.schema.json`
+- `design-system-impact/schemas/impact.schema.json`
+- `design-system-impact/schemas/migration.schema.json`
+
+They share definitions from `design-system-impact/schemas/common.schema.json`. Compatibility tests validate the complete generated workflow against these schemas, so an accidental change to the v1 wire format fails CI.
+
 ## Supported patterns
 
 - Named public exports from a TypeScript entry point

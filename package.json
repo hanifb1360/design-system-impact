@@ -5,9 +5,12 @@
   "type": "module",
   "engines": { "node": ">=20" },
   "bin": { "design-system-impact": "./dist/cli.js", "dsi": "./dist/cli.js" },
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./schemas/*": "./schemas/*"
+  },
   "types": "./dist/index.d.ts",
-  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "files": ["dist", "schemas", "README.md", "LICENSE", "CHANGELOG.md"],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
@@ -28,6 +31,7 @@
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@types/node": "^22.18.1",
+    "ajv": "^8.17.1",
     "eslint": "^9.35.0",
     "typescript-eslint": "^8.42.0",
     "vitest": "^3.2.4"

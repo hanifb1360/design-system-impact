@@ -20,6 +20,7 @@ try {
   if (!help.includes('design-system-impact') || !help.includes('snapshot')) throw new Error('Published CLI help is incomplete.');
   const manifest = JSON.parse(await readFile(path.join(installed, 'package.json'), 'utf8'));
   if (manifest.repository.url !== 'git+https://github.com/hanifb1360/design-system-impact.git') throw new Error('Published repository metadata is incorrect.');
+  for (const name of ['snapshot', 'diff', 'impact', 'migration', 'common']) { const schema = JSON.parse(await readFile(path.join(installed, `schemas/${name}.schema.json`), 'utf8')); if (!schema.$id) throw new Error(`Published ${name} schema is missing its identifier.`); }
   process.stdout.write(`Package smoke test passed: ${result[0].filename}\n`);
 } finally {
   await rm(temp, { recursive: true, force: true });

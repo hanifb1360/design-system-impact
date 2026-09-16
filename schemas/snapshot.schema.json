@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://design-system-impact.dev/schemas/snapshot.schema.json",
+  "title": "Design System Impact snapshot v1",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "package", "generatedBy", "components", "tokens", "exports", "diagnostics"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "design-system-snapshot" },
+    "package": { "$ref": "./common.schema.json#/$defs/package" },
+    "generatedBy": {
+      "type": "object",
+      "required": ["name", "schemaVersion"],
+      "properties": { "name": { "const": "design-system-impact" }, "schemaVersion": { "const": 1 } },
+      "additionalProperties": false
+    },
+    "components": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "importPath", "props"],
+        "properties": {
+          "name": { "type": "string" }, "importPath": { "type": "string" }, "deprecated": { "type": "string" }, "source": { "$ref": "./common.schema.json#/$defs/location" },
+          "props": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object", "required": ["required", "type"],
+              "properties": { "required": { "type": "boolean" }, "type": { "type": "string" }, "literals": { "type": "array", "items": { "type": "string" } }, "deprecated": { "type": "string" } },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "required": ["name", "kind", "value"],
+        "properties": { "name": { "type": "string" }, "kind": { "enum": ["json", "css-custom-property"] }, "value": {}, "alias": { "type": "string" }, "source": { "$ref": "./common.schema.json#/$defs/location" } },
+        "additionalProperties": false
+      }
+    },
+    "exports": {
+      "type": "array",
+      "items": { "type": "object", "required": ["name", "importPath", "kind"], "properties": { "name": { "type": "string" }, "importPath": { "type": "string" }, "kind": { "enum": ["component", "symbol"] } }, "additionalProperties": false }
+    },
+    "diagnostics": { "type": "array", "items": { "$ref": "./common.schema.json#/$defs/diagnostic" } }
+  },
+  "additionalProperties": false
+}
