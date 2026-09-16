@@ -1,0 +1,9 @@
+{
+  "designSystem": { "package": "@acme/ui", "entry": "unused.ts" },
+  "consumers": ["apps"],
+  "ownership": { "codeowners": "CODEOWNERS" },
+  "migrations": {
+    "schemaVersion": 1,
+    "componentProps": { "Button": { "tone": { "replacedBy": "variant", "values": { "critical": "danger" } } } }
+  }
+}
