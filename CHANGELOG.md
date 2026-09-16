@@ -6,3 +6,4 @@
 - Added runtime configuration and artifact validation, explicit wrapped-component extraction, compiled CLI coverage, and packed-package smoke tests.
 - Added a manual, environment-protected npm provenance workflow.
 - Added package export/subpath discovery, multi-path export diffs, and subpath-aware consumer imports.
+- Added deterministic multi-level local barrel and named-alias tracing for consumer imports.

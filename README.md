@@ -69,12 +69,14 @@ The CLI is a thin wrapper over these functions. Public artifacts use `schemaVers
 - DTCG-style `$value`, legacy `value`, nested JSON tokens, and `{alias.path}` aliases
 - CSS custom-property declarations and `var(--token)` aliases/usages
 - Named component imports and JSX attributes
+- Named imports and aliases traced through local relative barrel re-exports
 - Nearest `package.json` workspace attribution and common CODEOWNERS patterns
 
 ## Known limitations
 
 - Generic, polymorphic, class, conditional, deeply composed wrappers, and externally declared props may be incomplete; unsupported declarations are not fabricated.
-- Consumer analysis follows direct named imports and literal JSX attributes. Re-exports, aliases through local variables, spreads, computed values, and runtime token construction need future data-flow analysis.
+- Consumer analysis evaluates literal JSX attributes. Prop spreads, computed values, and runtime token construction need future data-flow analysis.
+- Consumer analysis follows named relative barrel re-exports, but does not yet resolve TypeScript path aliases, package-to-package workspace aliases, namespace imports, CommonJS forwarding, or aliases assigned through local variables.
 - JSON configuration is intentionally static and safe. `defineConfig` is typed for programmatic use, but the CLI does not execute TypeScript configuration.
 - Wildcard and runtime-only package exports are not expanded. Conditional exports prefer `types`, then `import`, `default`, and `require` targets.
 - CODEOWNERS support covers common last-match-wins glob rules, not every escaping nuance of GitHub's grammar.
